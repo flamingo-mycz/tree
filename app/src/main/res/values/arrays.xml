@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="work_content">
+        <item>数据采集</item>
+        <item>枯死树木普查</item>
+        <item>枯死树木除治</item>
+        <item>效果追踪</item>
+    </string-array>
+
+    <string-array name="processing_method">
+        <item>粉碎</item>
+        <item>焚烧</item>
+        <item>防逸袋</item>
+        <item>其他</item>
+    </string-array>
+
+    <string-array name="forest_farm">
+        <item>巴山</item>
+        <item>村街中心</item>
+        <item>岱庙</item>
+        <item>大津口乡</item>
+        <item>谷山林场</item>
+
+        <item>红门</item>
+        <item>虎山</item>
+        <item>黄前镇</item>
+        <item>灵岩寺</item>
+        <item>南天门</item>
+
+        <item>蟠桃园</item>
+        <item>桃花峪</item>
+        <item>桃花源</item>
+        <item>天烛峰</item>
+        <item>竹林寺</item>
+
+        <item>下港镇</item>
+        <item>玉泉寺</item>
+        <item>中天门</item>
+    </string-array>
+
+    <string-array name="role">
+        <item>管理员</item>
+        <item>普通用户</item>
+        <item>公司用户</item>
+    </string-array>
+</resources>

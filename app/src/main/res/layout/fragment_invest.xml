@@ -1,0 +1,92 @@
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        tools:context=".activity.MainActivity">
+
+        <!--ScrollView只能有一个孩子-->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@color/color_light_blue">
+
+                <!--树木编号-->
+                <include layout="@layout/layout_svitem_tree_id"/>
+
+                <!--地径-->
+                <include layout="@layout/layout_svitem_ground_diameter"/>
+
+                <!--照片（全部）-->
+                <include layout="@layout/layout_svitem_photo_all"/>
+
+                <!--本次工作内容-->
+                <include layout="@layout/layout_svitem_work_content" />
+
+                <!--现场操作人员-->
+                <include layout="@layout/layout_svitem_spot_operator"/>
+
+                <!--是否取样-->
+                <include layout="@layout/layout_svitem_whether_to_sample"/>
+
+                <!--枯死树木处理方式-->
+                <include layout="@layout/layout_svitem_processing_method" />
+
+                <!--备注-->
+                <include layout="@layout/layout_svitem_remarks"/>
+
+                <!--林场-->
+                <include layout="@layout/layout_svitem_forest_farm"/>
+
+                <!--林班-->
+                <include layout="@layout/layout_svitem_forest_class"/>
+
+                <!--小班-->
+                <include layout="@layout/layout_svitem_small_class"/>
+
+                <!--保存与上传-->
+                <include layout="@layout/layout_save_and_upload"/>
+
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+
+
+    <LinearLayout
+        android:id="@+id/ll_uploading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:orientation="vertical"
+        android:background="@color/color_dark"
+        android:gravity="center"
+        android:visibility="invisible"
+        android:padding="10dp"
+        >
+
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/color_white"
+            android:textSize="18dp"
+            android:text="@string/uploading_tip"/>
+    </LinearLayout>
+</RelativeLayout>
+
+
+
