@@ -5,9 +5,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
@@ -17,10 +19,17 @@ import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
 import com.baidu.mapapi.SDKInitializer;
 import com.baidu.mapapi.map.BaiduMap;
+import com.baidu.mapapi.map.BitmapDescriptor;
+import com.baidu.mapapi.map.BitmapDescriptorFactory;
+import com.baidu.mapapi.map.InfoWindow;
+import com.baidu.mapapi.map.MapPoi;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
+import com.baidu.mapapi.map.Marker;
+import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationConfiguration;
 import com.baidu.mapapi.map.MyLocationData;
+import com.baidu.mapapi.map.OverlayOptions;
 import com.baidu.mapapi.model.LatLng;
 import com.mycz.tree.R;
 
@@ -43,10 +52,25 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
     private static boolean isFirst = true;
     private ImageButton mBtAim;
     private ImageButton mBtBack;
+    private ConstraintLayout mClTools;
+
+    // 进入到此Activity的方法
+    private static String mStartMethod;
+
+    private ImageButton mBtMark;
+    private ImageButton mBtRuler;
+
+    // 允许标注
+    private static boolean mMarkable;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 获取启动方式
+        mStartMethod = getIntent().getStringExtra("method");
+        Toast.makeText(this, mStartMethod, Toast.LENGTH_SHORT).show();
+
         // 这句话要放在setContentView前面，否则会报错
         SDKInitializer.initialize(getApplicationContext());
         setContentView(R.layout.activity_map);
@@ -65,11 +89,68 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
      * 初始化界面
      */
     private void initView() {
+        // 工具图层
+        mClTools = findViewById(R.id.cl_tools);
+        if ("mark".equals(mStartMethod)) {
+            mClTools.setVisibility(View.VISIBLE);
+        } else {
+            mClTools.setVisibility(View.INVISIBLE);
+        }
+
         mMapView = findViewById(R.id.mapView);
         mBaiduMap = mMapView.getMap();
 
+        // 设置点击监听
+        mBaiduMap.setOnMapClickListener(new BaiduMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng point) {
+                if (mMarkable) {
+                    // 构建Marker图标
+                    BitmapDescriptor bitmap = BitmapDescriptorFactory
+                            .fromResource(R.drawable.ic_marker);
+                    // 构建MarkerOption，用于在地图上添加Marker
+                    OverlayOptions option = new MarkerOptions()
+                            .position(point)
+                            .icon(bitmap)
+                            .animateType(MarkerOptions.MarkerAnimateType.grow);
+                    // 在地图上添加Marker，并显示
+                    mBaiduMap.addOverlay(option);
+                    // 关闭标注
+                    mMarkable = false;
+                }
+            }
+
+            @Override
+            public void onMapPoiClick(MapPoi mapPoi) {
+
+            }
+        });
+
+        // marker点击监听
+        mBaiduMap.setOnMarkerClickListener(new BaiduMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                LatLng position = marker.getPosition();
+                //用来构造InfoWindow的Button
+                Button button = new Button(getApplicationContext());
+                button.setText("InfoWindow");
+
+                //构造InfoWindow
+                //point 描述的位置点
+                //-100 InfoWindow相对于point在y轴的偏移量
+                InfoWindow infoWindow = new InfoWindow(button, position, -100);
+
+                //使InfoWindow生效
+                mBaiduMap.showInfoWindow(infoWindow);
+                return false;
+            }
+        });
+
         mBtBack = findViewById(R.id.bt_back);
         mBtAim = findViewById(R.id.bt_aim);
+        mBtMark = findViewById(R.id.bt_mark);
+        mBtRuler = findViewById(R.id.bt_ruler);
+
     }
 
     /**
@@ -107,7 +188,14 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
             mBaiduMap.setMapStatus(MapStatusUpdateFactory.newLatLng(latLng));
             mBaiduMap.setMapStatus(MapStatusUpdateFactory.zoomTo(17));
         });
+
+        // 点击标注（旗子）按钮，在地图上标注点
+        mBtMark.setOnClickListener(v -> {
+            mMarkable = true;
+        });
     }
+
+
 
     /**
      * 则初始化定位服务
@@ -222,6 +310,8 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
     public void onPermissionsDenied(int requestCode, List<String> perms) {
         Toast.makeText(this,"没有授予权限", Toast.LENGTH_SHORT).show();
     }
+
+
 
     /**
      * 实现定位监听

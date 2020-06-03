@@ -24,8 +24,6 @@ import com.mycz.tree.activity.MapActivity;
  */
 public class MapToolsFragment extends Fragment {
 
-    private static final int REQUEST_LOCATION = 0x01;
-
     public static double LONGITUDE = 0.0;
     public static double LATITUDE = 0.0;
     private RelativeLayout mRlRoute;
@@ -65,13 +63,20 @@ public class MapToolsFragment extends Fragment {
      * 初始化事件
      */
     private void initEvent() {
+        // 以轨迹方式startActivity
         mRlRoute.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "111", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "trace", Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(getContext(), MapActivity.class);
+            intent.putExtra("method", "trace");
             startActivity(intent);
         });
+
+        // 以标注方式startActivity
         mRlMark.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "222", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "mark", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(getContext(), MapActivity.class);
+            intent.putExtra("method", "mark");
+            startActivity(intent);
         });
 
         mBtOpen.setOnClickListener(v -> {
