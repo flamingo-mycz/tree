@@ -31,7 +31,19 @@ import com.baidu.mapapi.map.MyLocationConfiguration;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.map.OverlayOptions;
 import com.baidu.mapapi.model.LatLng;
+import com.baidu.mapapi.search.route.BikingRouteResult;
+import com.baidu.mapapi.search.route.DrivingRouteResult;
+import com.baidu.mapapi.search.route.IndoorRouteResult;
+import com.baidu.mapapi.search.route.MassTransitRouteResult;
+import com.baidu.mapapi.search.route.OnGetRoutePlanResultListener;
+import com.baidu.mapapi.search.route.PlanNode;
+import com.baidu.mapapi.search.route.RoutePlanSearch;
+import com.baidu.mapapi.search.route.TransitRouteResult;
+import com.baidu.mapapi.search.route.WalkingRoutePlanOption;
+import com.baidu.mapapi.search.route.WalkingRouteResult;
 import com.mycz.tree.R;
+import com.mycz.tree.factory.NavInfoWindowFactory;
+import com.mycz.tree.overlayutil.WalkingRouteOverlay;
 
 import java.util.List;
 
@@ -62,6 +74,11 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
     // 允许标注
     private static boolean mMarkable;
+
+    // 是否已经显示infoWindow，infoWindow只能显示一个
+    private static boolean isShowInfoWindow = false;
+    private RoutePlanSearch mRoutePlanSearch;
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -100,6 +117,11 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         mMapView = findViewById(R.id.mapView);
         mBaiduMap = mMapView.getMap();
 
+        // 步行路线规划
+        mRoutePlanSearch = RoutePlanSearch.newInstance();
+        MyRoutePlanResultListener routePlanResultListener = new MyRoutePlanResultListener();
+        mRoutePlanSearch.setOnGetRoutePlanResultListener(routePlanResultListener);
+
         // 设置点击监听
         mBaiduMap.setOnMapClickListener(new BaiduMap.OnMapClickListener() {
             @Override
@@ -117,6 +139,18 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
                     mBaiduMap.addOverlay(option);
                     // 关闭标注
                     mMarkable = false;
+
+                    // 检索路线
+                    double latitude = mLocationClient.getLastKnownLocation().getLatitude();
+                    double longitude = mLocationClient.getLastKnownLocation().getLongitude();
+                    LatLng myLoc = new LatLng(latitude, longitude);
+                    PlanNode stNode = PlanNode.withLocation(myLoc);
+                    PlanNode enNode = PlanNode.withLocation(point);
+
+                    mRoutePlanSearch.walkingSearch((new WalkingRoutePlanOption())
+                            .from(stNode)
+                            .to(enNode));
+
                 }
             }
 
@@ -127,23 +161,29 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         });
 
         // marker点击监听
-        mBaiduMap.setOnMarkerClickListener(new BaiduMap.OnMarkerClickListener() {
-            @Override
-            public boolean onMarkerClick(Marker marker) {
-                LatLng position = marker.getPosition();
-                //用来构造InfoWindow的Button
-                Button button = new Button(getApplicationContext());
-                button.setText("InfoWindow");
+        mBaiduMap.setOnMarkerClickListener(marker -> {
 
-                //构造InfoWindow
-                //point 描述的位置点
-                //-100 InfoWindow相对于point在y轴的偏移量
-                InfoWindow infoWindow = new InfoWindow(button, position, -100);
+            LatLng position = marker.getPosition();
+            // 加载xml，获取view
+            View view = new NavInfoWindowFactory(getApplicationContext()).getNavInfoWindowView();
+            Button btClose = view.findViewById(R.id.bt_close);
+            btClose.setOnClickListener(v -> mBaiduMap.hideInfoWindow());
+            Button btNav = view.findViewById(R.id.bt_nav);
 
-                //使InfoWindow生效
-                mBaiduMap.showInfoWindow(infoWindow);
-                return false;
-            }
+
+            // 构造InfoWindow
+            // point 描述的位置点
+            // -100 InfoWindow相对于point在y轴的偏移量
+            InfoWindow infoWindow = new InfoWindow(view, position, -50);
+
+            // 显示infoWindow
+            mBaiduMap.showInfoWindow(infoWindow);
+
+
+
+
+
+            return false;
         });
 
         mBtBack = findViewById(R.id.bt_back);
@@ -196,7 +236,6 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
     }
 
 
-
     /**
      * 则初始化定位服务
      */
@@ -205,7 +244,8 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         mBaiduMap.setMyLocationEnabled(true);
 
         // 配置定位图标(跟随模式，有方向，默认图标)
-        MyLocationConfiguration locationConfiguration = new MyLocationConfiguration(MyLocationConfiguration.LocationMode.NORMAL, true, null);
+        MyLocationConfiguration locationConfiguration =
+                new MyLocationConfiguration(MyLocationConfiguration.LocationMode.NORMAL, true, null);
         mBaiduMap.setMyLocationConfiguration(locationConfiguration);
 
         // 实例化定位客户端
@@ -308,9 +348,8 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
      */
     @Override
     public void onPermissionsDenied(int requestCode, List<String> perms) {
-        Toast.makeText(this,"没有授予权限", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "没有授予权限", Toast.LENGTH_SHORT).show();
     }
-
 
 
     /**
@@ -320,6 +359,7 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
         /**
          * 当接收到位置信号时回调此方法
+         *
          * @param location
          */
         @Override
@@ -350,12 +390,57 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
         /**
          * 设置地图缩放和中心点
+         *
          * @param zoomTo
          * @param latLng
          */
         private void zoomAndLocate(float zoomTo, LatLng latLng) {
             mBaiduMap.setMapStatus(MapStatusUpdateFactory.zoomTo(zoomTo));
             mBaiduMap.setMapStatus(MapStatusUpdateFactory.newLatLng(latLng));
+        }
+    }
+
+    /**
+     * 实现路线规划检索结果监听器
+     */
+    private class MyRoutePlanResultListener implements OnGetRoutePlanResultListener {
+
+        @Override
+        public void onGetWalkingRouteResult(WalkingRouteResult walkingRouteResult) {
+            //创建WalkingRouteOverlay实例
+            WalkingRouteOverlay overlay = new WalkingRouteOverlay(mBaiduMap);
+            if (walkingRouteResult.getRouteLines().size() > 0) {
+                //获取路径规划数据,(以返回的第一条数据为例)
+                //为WalkingRouteOverlay实例设置路径数据
+                overlay.setData(walkingRouteResult.getRouteLines().get(0));
+                //在地图上绘制WalkingRouteOverlay
+                overlay.addToMap();
+            }
+        }
+
+        @Override
+        public void onGetTransitRouteResult(TransitRouteResult transitRouteResult) {
+
+        }
+
+        @Override
+        public void onGetMassTransitRouteResult(MassTransitRouteResult massTransitRouteResult) {
+
+        }
+
+        @Override
+        public void onGetDrivingRouteResult(DrivingRouteResult drivingRouteResult) {
+
+        }
+
+        @Override
+        public void onGetIndoorRouteResult(IndoorRouteResult indoorRouteResult) {
+
+        }
+
+        @Override
+        public void onGetBikingRouteResult(BikingRouteResult bikingRouteResult) {
+
         }
     }
 }
