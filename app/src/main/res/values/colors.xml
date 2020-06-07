@@ -11,6 +11,7 @@
     <color name="color_blue">#AEEEEE</color>
     <color name="color_deep_sky_blue">#00BFFF</color>
     <color name="color_bright_blue">#97FFFF</color>
+    <color name="color_transparent_gray">#99E9E9E9</color>
     <color name="color_light_gray">#E9E9E9</color>
     <color name="color_gray">#A9A9A9</color>
     <color name="color_white">#FFFFFF</color>

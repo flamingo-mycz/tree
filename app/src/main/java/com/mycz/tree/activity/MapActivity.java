@@ -1,7 +1,9 @@
 package com.mycz.tree.activity;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.icu.util.Measure;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -11,6 +13,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.baidu.location.BDAbstractLocationListener;
@@ -29,7 +32,9 @@ import com.baidu.mapapi.map.Marker;
 import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationConfiguration;
 import com.baidu.mapapi.map.MyLocationData;
+import com.baidu.mapapi.map.Overlay;
 import com.baidu.mapapi.map.OverlayOptions;
+import com.baidu.mapapi.map.PolylineOptions;
 import com.baidu.mapapi.model.LatLng;
 import com.baidu.mapapi.search.route.BikingRouteResult;
 import com.baidu.mapapi.search.route.DrivingRouteResult;
@@ -41,10 +46,13 @@ import com.baidu.mapapi.search.route.RoutePlanSearch;
 import com.baidu.mapapi.search.route.TransitRouteResult;
 import com.baidu.mapapi.search.route.WalkingRoutePlanOption;
 import com.baidu.mapapi.search.route.WalkingRouteResult;
+import com.baidu.mapapi.utils.AreaUtil;
+import com.baidu.mapapi.utils.DistanceUtil;
 import com.mycz.tree.R;
 import com.mycz.tree.factory.NavInfoWindowFactory;
 import com.mycz.tree.overlayutil.WalkingRouteOverlay;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import pub.devrel.easypermissions.EasyPermissions;
@@ -75,9 +83,11 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
     // 允许标注
     private static boolean mMarkable;
 
-    // 是否已经显示infoWindow，infoWindow只能显示一个
-    private static boolean isShowInfoWindow = false;
     private RoutePlanSearch mRoutePlanSearch;
+    private ConstraintLayout mClMeasure;
+    private boolean mIsMeasuring;
+    private List<LatLng> mPoints = new ArrayList<>();
+    private TextView mTvResult;
 
 
     @Override
@@ -98,8 +108,6 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         // 申请权限
         requestLocatePermission();
 
-        // 初始化事件
-        initEvents();
     }
 
     /**
@@ -113,85 +121,21 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         } else {
             mClTools.setVisibility(View.INVISIBLE);
         }
+        // 测量图层
+        mClMeasure = findViewById(R.id.cl_measure);
 
         mMapView = findViewById(R.id.mapView);
         mBaiduMap = mMapView.getMap();
-
-        // 步行路线规划
-        mRoutePlanSearch = RoutePlanSearch.newInstance();
-        MyRoutePlanResultListener routePlanResultListener = new MyRoutePlanResultListener();
-        mRoutePlanSearch.setOnGetRoutePlanResultListener(routePlanResultListener);
-
-        // 设置点击监听
-        mBaiduMap.setOnMapClickListener(new BaiduMap.OnMapClickListener() {
-            @Override
-            public void onMapClick(LatLng point) {
-                if (mMarkable) {
-                    // 构建Marker图标
-                    BitmapDescriptor bitmap = BitmapDescriptorFactory
-                            .fromResource(R.drawable.ic_marker);
-                    // 构建MarkerOption，用于在地图上添加Marker
-                    OverlayOptions option = new MarkerOptions()
-                            .position(point)
-                            .icon(bitmap)
-                            .animateType(MarkerOptions.MarkerAnimateType.grow);
-                    // 在地图上添加Marker，并显示
-                    mBaiduMap.addOverlay(option);
-                    // 关闭标注
-                    mMarkable = false;
-
-                    // 检索路线
-                    double latitude = mLocationClient.getLastKnownLocation().getLatitude();
-                    double longitude = mLocationClient.getLastKnownLocation().getLongitude();
-                    LatLng myLoc = new LatLng(latitude, longitude);
-                    PlanNode stNode = PlanNode.withLocation(myLoc);
-                    PlanNode enNode = PlanNode.withLocation(point);
-
-                    mRoutePlanSearch.walkingSearch((new WalkingRoutePlanOption())
-                            .from(stNode)
-                            .to(enNode));
-
-                }
-            }
-
-            @Override
-            public void onMapPoiClick(MapPoi mapPoi) {
-
-            }
-        });
-
-        // marker点击监听
-        mBaiduMap.setOnMarkerClickListener(marker -> {
-
-            LatLng position = marker.getPosition();
-            // 加载xml，获取view
-            View view = new NavInfoWindowFactory(getApplicationContext()).getNavInfoWindowView();
-            Button btClose = view.findViewById(R.id.bt_close);
-            btClose.setOnClickListener(v -> mBaiduMap.hideInfoWindow());
-            Button btNav = view.findViewById(R.id.bt_nav);
-
-
-            // 构造InfoWindow
-            // point 描述的位置点
-            // -100 InfoWindow相对于point在y轴的偏移量
-            InfoWindow infoWindow = new InfoWindow(view, position, -50);
-
-            // 显示infoWindow
-            mBaiduMap.showInfoWindow(infoWindow);
-
-
-
-
-
-            return false;
-        });
 
         mBtBack = findViewById(R.id.bt_back);
         mBtAim = findViewById(R.id.bt_aim);
         mBtMark = findViewById(R.id.bt_mark);
         mBtRuler = findViewById(R.id.bt_ruler);
 
+        mTvResult = findViewById(R.id.tv_result);
+
     }
+
 
     /**
      * 申请定位权限
@@ -204,6 +148,8 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         if (EasyPermissions.hasPermissions(this, permissions)) {
             // 如果有权限，则初始化定位服务
             initLocateService();
+            initRoutePlanSearch();
+            initEvents();
         } else {
             // 如果没有，则去申请权限
             EasyPermissions.requestPermissions(this, "定位服务需要授予App访问地理位置权限", REQUEST_PERMISSION_LOCATE_CODE, permissions);
@@ -233,8 +179,100 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         mBtMark.setOnClickListener(v -> {
             mMarkable = true;
         });
+
+        // 点击尺子按钮，测量面积
+        mBtRuler.setOnClickListener(v -> {
+            // 显示测量的图层
+            mClMeasure.setVisibility(View.VISIBLE);
+            mIsMeasuring = true;
+        });
+
+        // marker点击监听
+        mBaiduMap.setOnMarkerClickListener(marker -> {
+            View view = new NavInfoWindowFactory(getApplicationContext()).getNavInfoWindowView();
+            showInfoWindowOnMarker(marker, view);
+            return false;
+        });
+
+        // 设置地图点击监听
+        mBaiduMap.setOnMapClickListener(new BaiduMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng point) {
+                if (mMarkable) {
+                    addMarker(point);
+                    mMarkable = false;
+                }
+
+                if (mIsMeasuring) {
+                    mPoints.add(point);
+                    if (mPoints.size() == 2) {
+                        LatLng p1 = mPoints.get(0);
+                        LatLng p2 = mPoints.get(1);
+                        measure(p1, p2);
+                    }
+                }
+            }
+
+            @Override
+            public void onMapPoiClick(MapPoi mapPoi) {}
+        });
+
+
     }
 
+
+
+    /*****************************地图有关方法************************************************/
+
+    /**
+     * 获取我的位置
+     * @return
+     */
+    private LatLng getMyLocation() {
+        double latitude = mLocationClient.getLastKnownLocation().getLatitude();
+        double longitude = mLocationClient.getLastKnownLocation().getLongitude();
+        return new LatLng(latitude, longitude);
+    }
+
+    /**
+     * 检索规划步行路线
+     * @param start
+     * @param end
+     */
+    private void searchWakingRoute(LatLng start, LatLng end) {
+        PlanNode stNode = PlanNode.withLocation(start);
+        PlanNode enNode = PlanNode.withLocation(end);
+        mRoutePlanSearch.walkingSearch((new WalkingRoutePlanOption())
+                .from(stNode)
+                .to(enNode));
+    }
+
+
+    /**
+     * 在地图上添加Marker
+     * @param point
+     */
+    private void addMarker(LatLng point) {
+        // 构建Marker图标
+        BitmapDescriptor bitmap = BitmapDescriptorFactory
+                .fromResource(R.drawable.ic_marker);
+        // 构建MarkerOption，用于在地图上添加Marker
+        OverlayOptions option = new MarkerOptions()
+                .position(point)
+                .icon(bitmap)
+                .animateType(MarkerOptions.MarkerAnimateType.grow);
+        // 在地图上添加Marker，并显示
+        mBaiduMap.addOverlay(option);
+    }
+
+    /**
+     * 初始化路线规划及搜索
+     */
+    private void initRoutePlanSearch() {
+        mRoutePlanSearch = RoutePlanSearch.newInstance();
+        MyRoutePlanResultListener routePlanResultListener = new MyRoutePlanResultListener();
+        mRoutePlanSearch.setOnGetRoutePlanResultListener(routePlanResultListener);
+    }
 
     /**
      * 则初始化定位服务
@@ -268,8 +306,109 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
         // 开启地图定位图层
         mLocationClient.start();
-
     }
+
+
+    /**
+     * 在marker上显示InfoWindow
+     */
+    @SuppressLint("DefaultLocale")
+    private void showInfoWindowOnMarker(Marker marker, View view) {
+        LatLng position = marker.getPosition();
+
+        // 构造InfoWindow
+        // point 描述的位置点
+        // -100 InfoWindow相对于point在y轴的偏移量
+        InfoWindow infoWindow = new InfoWindow(view, position, -100);
+
+        // 给关闭按钮设置监听
+        Button btClose = view.findViewById(R.id.bt_close);
+        btClose.setOnClickListener(v -> mBaiduMap.hideInfoWindow());
+        // 给路线规划按钮设置监听
+        View btRoute = view.findViewById(R.id.bt_route);
+        LatLng start = getMyLocation();
+        LatLng destination = marker.getPosition();
+        btRoute.setOnClickListener(v -> searchWakingRoute(start, destination));
+        // 计算距离
+        double distance = DistanceUtil.getDistance(start, destination);
+        TextView tvDistance = view.findViewById(R.id.tv_distance);
+        tvDistance.setText(String.format("%.2fkm", distance / 1000));
+
+        // 显示infoWindow
+        mBaiduMap.showInfoWindow(infoWindow);
+    }
+
+
+    /**
+     *
+     * @param p1
+     * @param p2
+     */
+    @SuppressLint("DefaultLocale")
+    private void measure(LatLng p1, LatLng p2) {
+        double distance = DistanceUtil.getDistance(p1, p2);
+        double area = AreaUtil.calculateArea(p1, p2);
+
+        drawLine(p1, p2);
+        mTvResult.setText(String.format("距离为：%.2fkm", distance/1000));
+    }
+
+    /**
+     * 在地图上画一条线
+     * @param p1
+     * @param p2
+     */
+    private void drawLine(LatLng p1, LatLng p2) {
+        //构建折线点坐标
+        List<LatLng> points = new ArrayList<>();
+        points.add(p1);
+        points.add(p2);
+
+        //设置折线的属性
+        OverlayOptions mOverlayOptions = new PolylineOptions()
+                .width(10)
+                .color(0xAAFF0000)
+                .points(points);
+        //在地图上绘制折线
+        //mPloyline 折线对象
+        Overlay mPolyline = mBaiduMap.addOverlay(mOverlayOptions);
+    }
+
+    /**
+     * 在地图上画一个矩形
+     * @param p1
+     * @param p2
+     */
+    private void drawRectangle(LatLng p1, LatLng p2) {
+        double x1 = p1.longitude;
+        double y1 = p1.latitude;
+
+        double x2 = p2.longitude;
+        double y2 = p2.latitude;
+
+        double x3 = x2;
+        double y3 = y2 - (x2 - x1);
+
+        double x4 = x1;
+        double y4 = y1 - (x2 - x1);
+
+        //构建折线点坐标
+        List<LatLng> points = new ArrayList<>();
+        points.add(p1);
+        points.add(p2);
+
+        //设置折线的属性
+        OverlayOptions mOverlayOptions = new PolylineOptions()
+                .width(10)
+                .color(0xAAFF0000)
+                .points(points);
+        //在地图上绘制折线
+        //mPloyline 折线对象
+        Overlay mPolyline = mBaiduMap.addOverlay(mOverlayOptions);
+    }
+
+
+    /**********************************************************************************************/
 
     /**
      * 申请权限时回调此方法
@@ -338,6 +477,8 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
     @Override
     public void onPermissionsGranted(int requestCode, List<String> perms) {
         initLocateService();
+        initRoutePlanSearch();
+        initEvents();
     }
 
     /**
