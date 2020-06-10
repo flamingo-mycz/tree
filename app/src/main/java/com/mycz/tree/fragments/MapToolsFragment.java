@@ -79,20 +79,6 @@ public class MapToolsFragment extends Fragment {
             startActivity(intent);
         });
 
-        mBtOpen.setOnClickListener(v -> {
-            try {
-                LatLng startLatLng = new LatLng(39.940387, 116.29446);
-                LatLng endLatLng = new LatLng(39.87397, 116.529025);
-                String uri = String.format("baidumap://map/direction?origin=%s,%s&destination=" +
-                                "%s,%s&mode=driving&src=com.34xian.demo", startLatLng.latitude, startLatLng.longitude,
-                        endLatLng.latitude, endLatLng.longitude);
-                Intent intent = new Intent();
-                intent.setData(Uri.parse(uri));
-                startActivity(intent);
-            } catch (ActivityNotFoundException e) {
-                Toast.makeText(getActivity(), "请先安装百度地图", Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
     /**
@@ -101,7 +87,6 @@ public class MapToolsFragment extends Fragment {
     private void initView(View root) {
         mRlRoute = root.findViewById(R.id.rl_route);
         mRlMark = root.findViewById(R.id.rl_mark);
-        mBtOpen = root.findViewById(R.id.bt_open_map);
 
     }
 

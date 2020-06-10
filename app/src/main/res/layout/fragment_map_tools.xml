@@ -23,7 +23,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="轨迹绘制"
+                android:text="@string/str_map_trace"
                 android:textAlignment="center" />
         </RelativeLayout>
 
@@ -39,17 +39,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="地图标注"
+                android:text="@string/str_map_mark"
                 android:textAlignment="center" />
         </RelativeLayout>
 
     </LinearLayout>
-
-    <Button
-        android:id="@+id/bt_open_map"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="start"/>
 
 
 </LinearLayout>

@@ -15,7 +15,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="距离："
+            android:text="@string/str_distance"
             />
 
         <TextView
@@ -28,22 +28,22 @@
 
 
     <Button
-        android:id="@+id/bt_route"
+        android:id="@+id/bt_route_planning"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="路线规划"/>
+        android:text="@string/str_route_planning"/>
 
     <Button
-        android:id="@+id/bt_na"
+        android:id="@+id/bt_nav"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="导航"/>
+        android:text="@string/str_navigation"/>
 
     <Button
         android:id="@+id/bt_close_window"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="关闭"/>
+        android:text="@string/str_close"/>
 
 
 </LinearLayout>

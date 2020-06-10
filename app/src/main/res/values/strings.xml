@@ -27,5 +27,11 @@
     <string name="str_login">登录</string>
     <string name="str_scan_query">扫码查询</string>
     <string name="str_measure_tip">请点击屏幕，选择两个点</string>
+    <string name="str_map_trace">轨迹绘制</string>
+    <string name="str_map_mark">地图标注</string>
+    <string name="str_distance">距离：</string>
+    <string name="str_route_planning">路线规划</string>
+    <string name="str_navigation">导航</string>
+    <string name="str_close">关闭</string>
 
 </resources>

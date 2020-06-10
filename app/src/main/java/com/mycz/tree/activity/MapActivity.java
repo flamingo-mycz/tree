@@ -36,6 +36,9 @@ import com.baidu.mapapi.map.OverlayOptions;
 import com.baidu.mapapi.map.PolylineOptions;
 import com.baidu.mapapi.map.TextOptions;
 import com.baidu.mapapi.model.LatLng;
+import com.baidu.mapapi.navi.BaiduMapAppNotSupportNaviException;
+import com.baidu.mapapi.navi.BaiduMapNavigation;
+import com.baidu.mapapi.navi.NaviParaOption;
 import com.baidu.mapapi.search.route.BikingRouteResult;
 import com.baidu.mapapi.search.route.DrivingRouteResult;
 import com.baidu.mapapi.search.route.IndoorRouteResult;
@@ -255,11 +258,10 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
     /**
      * 检索规划步行路线
      *
-     * @param start
      * @param end
      */
-    private void searchWakingRoute(LatLng start, LatLng end) {
-        PlanNode stNode = PlanNode.withLocation(start);
+    private void searchWakingRoute(LatLng end) {
+        PlanNode stNode = PlanNode.withLocation(getMyLocation());
         PlanNode enNode = PlanNode.withLocation(end);
 
         mRoutePlanSearch.walkingSearch((new WalkingRoutePlanOption())
@@ -350,18 +352,46 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         // 给关闭按钮设置监听
         Button btCloseWindow = view.findViewById(R.id.bt_close_window);
         btCloseWindow.setOnClickListener(v -> mBaiduMap.hideInfoWindow());
+
         // 给路线规划按钮设置监听
-        View btRoute = view.findViewById(R.id.bt_route);
-        LatLng start = getMyLocation();
+        Button btRoutePlanning = view.findViewById(R.id.bt_route_planning);
         LatLng destination = marker.getPosition();
-        btRoute.setOnClickListener(v -> searchWakingRoute(start, destination));
+        btRoutePlanning.setOnClickListener(v -> searchWakingRoute(destination));
+
+        // 给导航按钮设置点击监听
+        Button btNav = view.findViewById(R.id.bt_nav);
+        btNav.setOnClickListener(v -> navigate(destination));
+
         // 计算距离
-        double distance = DistanceUtil.getDistance(start, destination);
+        double distance = DistanceUtil.getDistance(getMyLocation(), destination);
         TextView tvDistance = view.findViewById(R.id.tv_distance);
         tvDistance.setText(String.format("%.2fkm", distance / 1000));
 
         // 显示infoWindow
         mBaiduMap.showInfoWindow(infoWindow);
+    }
+
+    /**
+     * 调起百度地图步行导航
+     * @param destination
+     */
+    private void navigate(LatLng destination) {
+        //定义起终点坐标（天安门和百度大厦）
+        LatLng startPoint = getMyLocation();
+        LatLng endPoint = destination;
+
+        //构建导航参数
+        NaviParaOption para = new NaviParaOption()
+                .startPoint(startPoint)
+                .endPoint(endPoint);
+        //调起百度地图
+        try {
+            BaiduMapNavigation.openBaiduMapWalkNavi(para, this);
+        } catch (BaiduMapAppNotSupportNaviException e) {
+            //调起失败的处理
+            Toast.makeText(this,"没有安装百度地图，请先安装", Toast.LENGTH_SHORT).show();
+        }
+
     }
 
 
