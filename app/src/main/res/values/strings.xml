@@ -26,5 +26,6 @@
     <string name="str_input_password">请输入密码</string>
     <string name="str_login">登录</string>
     <string name="str_scan_query">扫码查询</string>
+    <string name="str_measure_tip">请点击屏幕，选择两个点</string>
 
 </resources>

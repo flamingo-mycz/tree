@@ -19,7 +19,7 @@ public class NavInfoWindowFactory {
     }
 
     public View getNavInfoWindowView() {
-        View view = LayoutInflater.from(mContext).inflate(R.layout.layout_nav_info_window, null, false);
+        View view = LayoutInflater.from(mContext).inflate(R.layout.info_window, null, false);
         return view;
     }
 

@@ -3,12 +3,12 @@ package com.mycz.tree.activity;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.icu.util.Measure;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
@@ -32,9 +32,9 @@ import com.baidu.mapapi.map.Marker;
 import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationConfiguration;
 import com.baidu.mapapi.map.MyLocationData;
-import com.baidu.mapapi.map.Overlay;
 import com.baidu.mapapi.map.OverlayOptions;
 import com.baidu.mapapi.map.PolylineOptions;
+import com.baidu.mapapi.map.TextOptions;
 import com.baidu.mapapi.model.LatLng;
 import com.baidu.mapapi.search.route.BikingRouteResult;
 import com.baidu.mapapi.search.route.DrivingRouteResult;
@@ -51,11 +51,15 @@ import com.baidu.mapapi.utils.DistanceUtil;
 import com.mycz.tree.R;
 import com.mycz.tree.factory.NavInfoWindowFactory;
 import com.mycz.tree.overlayutil.WalkingRouteOverlay;
+import com.mycz.tree.util.RectangleUtil;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import pub.devrel.easypermissions.EasyPermissions;
+
+import static com.baidu.mapapi.map.TextOptions.ALIGN_BOTTOM;
+import static com.baidu.mapapi.map.TextOptions.ALIGN_LEFT;
 
 /**
  * @author 木已成舟
@@ -85,9 +89,10 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
     private RoutePlanSearch mRoutePlanSearch;
     private ConstraintLayout mClMeasure;
-    private boolean mIsMeasuring;
+    private boolean mEnableMeasure;
     private List<LatLng> mPoints = new ArrayList<>();
     private TextView mTvResult;
+    private ImageButton mBtCloseLayer;
 
 
     @Override
@@ -133,6 +138,9 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         mBtRuler = findViewById(R.id.bt_ruler);
 
         mTvResult = findViewById(R.id.tv_result);
+
+        mBtCloseLayer = findViewById(R.id.bt_close_layer);
+
 
     }
 
@@ -184,7 +192,15 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         mBtRuler.setOnClickListener(v -> {
             // 显示测量的图层
             mClMeasure.setVisibility(View.VISIBLE);
-            mIsMeasuring = true;
+            // 启用测量模式
+            mEnableMeasure = true;
+            // 设置默认的tip信息
+            mTvResult.setText(R.string.str_measure_tip);
+        });
+
+        // 给测量图层的关闭按钮设置监听
+        mBtCloseLayer.setOnClickListener(v -> {
+            mClMeasure.setVisibility(View.INVISIBLE);
         });
 
         // marker点击监听
@@ -203,29 +219,31 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
                     mMarkable = false;
                 }
 
-                if (mIsMeasuring) {
+                if (mEnableMeasure) {
                     mPoints.add(point);
+                    Log.v("MapAPP", "points=" + mPoints.size());
                     if (mPoints.size() == 2) {
                         LatLng p1 = mPoints.get(0);
                         LatLng p2 = mPoints.get(1);
                         measure(p1, p2);
+                        mPoints.clear();
+                        mEnableMeasure = false;
                     }
                 }
             }
 
             @Override
-            public void onMapPoiClick(MapPoi mapPoi) {}
+            public void onMapPoiClick(MapPoi mapPoi) {
+            }
         });
-
-
     }
-
 
 
     /*****************************地图有关方法************************************************/
 
     /**
      * 获取我的位置
+     *
      * @return
      */
     private LatLng getMyLocation() {
@@ -236,12 +254,14 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
     /**
      * 检索规划步行路线
+     *
      * @param start
      * @param end
      */
     private void searchWakingRoute(LatLng start, LatLng end) {
         PlanNode stNode = PlanNode.withLocation(start);
         PlanNode enNode = PlanNode.withLocation(end);
+
         mRoutePlanSearch.walkingSearch((new WalkingRoutePlanOption())
                 .from(stNode)
                 .to(enNode));
@@ -250,17 +270,20 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
     /**
      * 在地图上添加Marker
+     *
      * @param point
      */
     private void addMarker(LatLng point) {
         // 构建Marker图标
         BitmapDescriptor bitmap = BitmapDescriptorFactory
                 .fromResource(R.drawable.ic_marker);
+
         // 构建MarkerOption，用于在地图上添加Marker
         OverlayOptions option = new MarkerOptions()
                 .position(point)
                 .icon(bitmap)
                 .animateType(MarkerOptions.MarkerAnimateType.grow);
+
         // 在地图上添加Marker，并显示
         mBaiduMap.addOverlay(option);
     }
@@ -291,10 +314,13 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
         //通过LocationClientOption设置LocationClient相关参数
         LocationClientOption option = new LocationClientOption();
+
         // 打开gps
         option.setOpenGps(true);
+
         // 设置坐标类型
         option.setCoorType("bd09ll");
+
         // 每隔1s定位1次
         option.setScanSpan(1000);
 
@@ -322,8 +348,8 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         InfoWindow infoWindow = new InfoWindow(view, position, -100);
 
         // 给关闭按钮设置监听
-        Button btClose = view.findViewById(R.id.bt_close);
-        btClose.setOnClickListener(v -> mBaiduMap.hideInfoWindow());
+        Button btCloseWindow = view.findViewById(R.id.bt_close_window);
+        btCloseWindow.setOnClickListener(v -> mBaiduMap.hideInfoWindow());
         // 给路线规划按钮设置监听
         View btRoute = view.findViewById(R.id.bt_route);
         LatLng start = getMyLocation();
@@ -340,6 +366,7 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
 
     /**
+     * 测量两点之间的距离和两点确定的矩形的面积
      *
      * @param p1
      * @param p2
@@ -349,12 +376,18 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         double distance = DistanceUtil.getDistance(p1, p2);
         double area = AreaUtil.calculateArea(p1, p2);
 
+        String text = String.format("距离为：%.2fkm,面积为：%.2fkm²", distance / 1e3, area / 1e6);
+
         drawLine(p1, p2);
-        mTvResult.setText(String.format("距离为：%.2fkm", distance/1000));
+        drawRectangle(p1, p2);
+        drawText(RectangleUtil.leftTopVertex(p1, p2), text);
+        mTvResult.setText(text);
+
     }
 
     /**
      * 在地图上画一条线
+     *
      * @param p1
      * @param p2
      */
@@ -369,44 +402,49 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
                 .width(10)
                 .color(0xAAFF0000)
                 .points(points);
+
         //在地图上绘制折线
-        //mPloyline 折线对象
-        Overlay mPolyline = mBaiduMap.addOverlay(mOverlayOptions);
+        mBaiduMap.addOverlay(mOverlayOptions);
     }
 
     /**
      * 在地图上画一个矩形
+     *
      * @param p1
      * @param p2
      */
     private void drawRectangle(LatLng p1, LatLng p2) {
-        double x1 = p1.longitude;
-        double y1 = p1.latitude;
-
-        double x2 = p2.longitude;
-        double y2 = p2.latitude;
-
-        double x3 = x2;
-        double y3 = y2 - (x2 - x1);
-
-        double x4 = x1;
-        double y4 = y1 - (x2 - x1);
-
         //构建折线点坐标
-        List<LatLng> points = new ArrayList<>();
-        points.add(p1);
-        points.add(p2);
+        List<LatLng> points = RectangleUtil.vertices(p1, p2);
 
         //设置折线的属性
         OverlayOptions mOverlayOptions = new PolylineOptions()
                 .width(10)
                 .color(0xAAFF0000)
-                .points(points);
+                .points(points)
+                .dottedLine(true);
+
         //在地图上绘制折线
-        //mPloyline 折线对象
-        Overlay mPolyline = mBaiduMap.addOverlay(mOverlayOptions);
+        mBaiduMap.addOverlay(mOverlayOptions);
     }
 
+    /**
+     * 在地图上描绘文字
+     * @param point
+     * @param text
+     */
+    private void drawText(LatLng point, String text) {
+        //构建TextOptions对象
+        OverlayOptions mTextOptions = new TextOptions()
+                .text(text) //文字内容
+                .fontSize(24) //字号
+                .fontColor(0xFFFF00FF) //文字颜色
+                .position(point)
+                .align(ALIGN_LEFT, ALIGN_BOTTOM);
+
+        //在地图上显示文字覆盖物
+        mBaiduMap.addOverlay(mTextOptions);
+    }
 
     /**********************************************************************************************/
 
