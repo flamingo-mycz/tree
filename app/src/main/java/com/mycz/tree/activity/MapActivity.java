@@ -35,7 +35,11 @@ import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.map.OverlayOptions;
 import com.baidu.mapapi.map.PolylineOptions;
 import com.baidu.mapapi.map.TextOptions;
+import com.baidu.mapapi.map.TileOverlay;
+import com.baidu.mapapi.map.TileOverlayOptions;
+import com.baidu.mapapi.map.UrlTileProvider;
 import com.baidu.mapapi.model.LatLng;
+import com.baidu.mapapi.model.LatLngBounds;
 import com.baidu.mapapi.navi.BaiduMapAppNotSupportNaviException;
 import com.baidu.mapapi.navi.BaiduMapNavigation;
 import com.baidu.mapapi.navi.NaviParaOption;
@@ -96,6 +100,7 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
     private List<LatLng> mPoints = new ArrayList<>();
     private TextView mTvResult;
     private ImageButton mBtCloseLayer;
+    private ImageButton mBtDelete;
 
 
     @Override
@@ -135,6 +140,17 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         mMapView = findViewById(R.id.mapView);
         mBaiduMap = mMapView.getMap();
 
+        // ***********贴上瓦片图
+        TileOverlayOptions options = new TileOverlayOptions();
+        // 构造显示瓦片图范围，当前为世界范围
+        LatLng northeast = new LatLng(90, 180);
+        LatLng southwest = new LatLng(-90, -180);
+
+        // 通过option指定相关属性，向地图添加在线瓦片图对象
+        options.tileProvider(new TianDiTuUrlTileProvider())
+                .setPositionFromBounds(new LatLngBounds.Builder().include(northeast).include(southwest).build());
+
+        TileOverlay tileOverlay = mBaiduMap.addTileLayer(options);
         mBtBack = findViewById(R.id.bt_back);
         mBtAim = findViewById(R.id.bt_aim);
         mBtMark = findViewById(R.id.bt_mark);
@@ -143,6 +159,8 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         mTvResult = findViewById(R.id.tv_result);
 
         mBtCloseLayer = findViewById(R.id.bt_close_layer);
+
+        mBtDelete = findViewById(R.id.bt_delete);
 
 
     }
@@ -204,6 +222,11 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         // 给测量图层的关闭按钮设置监听
         mBtCloseLayer.setOnClickListener(v -> {
             mClMeasure.setVisibility(View.INVISIBLE);
+        });
+
+        // 点击垃圾桶按钮，删除所有overlay
+        mBtDelete.setOnClickListener(v -> {
+            mMapView.getOverlay().clear();
         });
 
         // marker点击监听
@@ -373,6 +396,7 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
     /**
      * 调起百度地图步行导航
+     *
      * @param destination
      */
     private void navigate(LatLng destination) {
@@ -389,7 +413,7 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
             BaiduMapNavigation.openBaiduMapWalkNavi(para, this);
         } catch (BaiduMapAppNotSupportNaviException e) {
             //调起失败的处理
-            Toast.makeText(this,"没有安装百度地图，请先安装", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "没有安装百度地图，请先安装", Toast.LENGTH_SHORT).show();
         }
 
     }
@@ -460,6 +484,7 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
 
     /**
      * 在地图上描绘文字
+     *
      * @param point
      * @param text
      */
@@ -650,6 +675,32 @@ public class MapActivity extends AppCompatActivity implements EasyPermissions.Pe
         @Override
         public void onGetBikingRouteResult(BikingRouteResult bikingRouteResult) {
 
+        }
+    }
+
+    /**
+     * 天地图UrlTileProvider
+     * 在线下载方式
+     */
+    private class TianDiTuUrlTileProvider extends UrlTileProvider {
+
+        private final int maxLevel = 10;
+        private final int minLevel = 1;
+        private final String tiltUrl = "http://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={x}&TILECOL={y}&tk=c511cad6c44b4590b2a783303ae7cf3c";
+
+        @Override
+        public String getTileUrl() {
+            return tiltUrl;
+        }
+
+        @Override
+        public int getMaxDisLevel() {
+            return this.maxLevel;
+        }
+
+        @Override
+        public int getMinDisLevel() {
+            return this.minLevel;
         }
     }
 }

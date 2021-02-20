@@ -1,0 +1,36 @@
+
+C:\Users\木已成舟\.android
+λ keytool -list -v -keystore debug.keystore
+输入密钥库口令:
+密钥库类型: JKS
+密钥库提供方: SUN
+
+您的密钥库包含 1 个条目
+
+别名: androiddebugkey
+创建日期: 2019-8-1
+条目类型: PrivateKeyEntry
+证书链长度: 1
+证书[1]:
+所有者: C=US, O=Android, CN=Android Debug
+发布者: C=US, O=Android, CN=Android Debug
+序列号: 1
+有效期为 Thu Aug 01 09:22:22 CST 2019 至 Sat Jul 24 09:22:22 CST 2049
+证书指纹:
+         MD5:  CD:E6:5C:23:DD:71:C2:9C:83:1A:09:39:10:39:EA:53
+         SHA1: E2:B1:92:C2:F2:DD:EB:A6:62:A8:12:0B:07:BF:7E:9A:33:0B:02:50
+         SHA256: A7:63:1B:20:13:65:0B:59:16:C7:12:42:68:BF:BC:C3:BF:0A:ED:15:58:16:7C:CA:06:B2:74:92:74:B5:87:9B
+签名算法名称: SHA1withRSA
+主体公共密钥算法: 1024 位 RSA 密钥
+版本: 1
+
+
+*******************************************
+*******************************************
+
+
+
+Warning:
+JKS 密钥库使用专用格式。建议使用 "keytool -importkeystore -srckeystore debug.keystore -destkeystore debug.keystore -dest
+storetype pkcs12" 迁移到行业标准格式 PKCS12。
+
